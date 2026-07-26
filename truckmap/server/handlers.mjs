@@ -42,6 +42,61 @@ if (!process.env.TRUST_PROXY && (process.env.NETLIFY || process.env.VERCEL)) {
   );
 }
 
+/**
+ * The Turnstile sitekey and secret are a PAIR and must be configured together.
+ *
+ * Neither half fails loudly on its own, and one of the two ways to get it wrong
+ * is genuinely dangerous:
+ *
+ *   SITEKEY set, SECRET missing   The widget renders, the browser mints real
+ *                                 tokens, and verifyTurnstile() returns early
+ *                                 because TURNSTILE_SECRET is falsy. Every
+ *                                 write is accepted unverified — a public,
+ *                                 unprotected write endpoint that looks
+ *                                 protected from the outside, including to you.
+ *
+ *   SECRET set, SITEKEY missing   turnstile.js gets a null sitekey from
+ *                                 /api/config and becomes a no-op, so no token
+ *                                 is ever sent, so every write is rejected with
+ *                                 "Verification required." Loud, but it points
+ *                                 at the wrong half.
+ *
+ * Cloudflare's always-pass TEST keys start 1x/2x/3x; real ones start 0x. Mixing
+ * a real sitekey with a test secret is the same hazard as the first case above
+ * wearing a disguise: real tokens arrive and are rubber-stamped.
+ */
+{
+  const sitekey = process.env.TURNSTILE_SITEKEY ?? "";
+  const isTest = (k) => /^[123]x0{6}/.test(k);
+
+  if (sitekey && !TURNSTILE_SECRET) {
+    console.warn(
+      "  WARNING: TURNSTILE_SITEKEY is set but TURNSTILE_SECRET is NOT.\n" +
+      "           The widget will render and mint tokens, and this server will\n" +
+      "           SKIP verification entirely. Writes are unprotected. Set the\n" +
+      "           secret or unset the sitekey — do not ship this pairing.\n"
+    );
+  } else if (TURNSTILE_SECRET && !sitekey) {
+    console.warn(
+      "  WARNING: TURNSTILE_SECRET is set but TURNSTILE_SITEKEY is NOT.\n" +
+      "           The browser will send no token and every write will fail with\n" +
+      "           'Verification required'. Set the sitekey too.\n"
+    );
+  } else if (sitekey && TURNSTILE_SECRET && isTest(sitekey) !== isTest(TURNSTILE_SECRET)) {
+    console.warn(
+      "  WARNING: Turnstile keys are mismatched — one is a Cloudflare TEST key\n" +
+      "           and the other is real. A test SECRET accepts any token, so a\n" +
+      "           real sitekey paired with it verifies nothing. Use both from\n" +
+      "           the same widget.\n"
+    );
+  } else if (sitekey && isTest(sitekey)) {
+    console.warn(
+      "  NOTE: using Cloudflare's always-pass TEST Turnstile keys. Fine for\n" +
+      "        local development; the bot gate verifies nothing.\n"
+    );
+  }
+}
+
 // service_role client: bypasses RLS entirely. Never expose this to a browser.
 const db = createClient(SUPABASE_URL, SECRET_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },

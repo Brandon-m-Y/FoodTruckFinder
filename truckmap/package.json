@@ -10,6 +10,7 @@
     "db:push": "supabase db push",
     "db:status": "supabase migration list",
     "smoke": "node scripts/smoke.mjs",
+    "check-deploy": "node scripts/check-deploy.mjs",
     "purge-demo": "node scripts/purge-demo.mjs"
   },
   "dependencies": {

@@ -225,9 +225,32 @@ everything else resolves from there. UI settings only override the file and caus
 | Functions directory | `netlify/functions` | `netlify.toml` |
 
 Environment variables are the one thing the UI must supply — they are secrets and cannot live in a
-committed file. The full list is at the top of
-[`api.mjs`](truckmap/netlify/functions/api.mjs); `TRUST_PROXY=netlify` is the one whose absence
-fails silently.
+committed file:
+
+| Variable | Value | If you forget it |
+|---|---|---|
+| `SUPABASE_URL` | project URL | every write returns `503 write_api_disabled` |
+| `SUPABASE_SECRET_KEY` | service_role key | same |
+| `IP_HASH_SALT` | `openssl rand -hex 24` — a **new** one, not your local value | stored `ip_hash`es are brute-forceable across the IPv4 space |
+| `TURNSTILE_SITEKEY` | real key, starts `0x` | widget is a no-op; **writes go unchallenged** |
+| `TURNSTILE_SECRET` | real key, starts `0x` | verification is skipped entirely; **writes go unchallenged** |
+| `TRUST_PROXY` | `netlify` | every visitor shares one `ip_hash`; the caps become one global cap |
+| `RATE_LIMIT_EXEMPT_IPS` | leave **empty** | a home address here is permanently exempt from every cap |
+
+Then verify from outside:
+
+```bash
+cd truckmap
+npm run check-deploy https://your-site.netlify.app
+```
+
+That last step is not ceremony. Every other misconfiguration here announces itself — a missing key
+gives a 503, a bad route gives a 404. But a site running Cloudflare's always-pass **TEST** secret
+behaves exactly like a correctly protected one from a browser: the widget renders, tokens are
+minted, submissions succeed. The only way to tell from outside is to send a token a real secret
+must reject and confirm it *is* rejected, which is what the script does. It writes nothing — every
+probe carries a deliberately invalid rating, so anything that survives the bot gate is stopped by
+validation before a row exists.
 
 ## Not built yet
 
