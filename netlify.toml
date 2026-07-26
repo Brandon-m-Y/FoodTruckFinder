@@ -23,6 +23,20 @@
 
   functions = "netlify/functions"
 
+[build.environment]
+  # Netlify's secret scanner fails the build when the VALUE of any environment
+  # variable also appears in committed files. It assumes every variable is
+  # sensitive; SUPABASE_URL is not. It is the public API endpoint, it is in every
+  # request the browser makes, and anyone can read it from devtools in a second.
+  # It has to be in frontend/js/config.js for the map to know where to call.
+  #
+  # Omit that ONE key rather than reaching for SECRETS_SCAN_ENABLED=false. The
+  # scanner is worth keeping: it is exactly what would catch SUPABASE_SECRET_KEY
+  # being pulled into the frontend bundle by a careless import, which is the
+  # mistake that actually matters and is easy to make. Disabling it wholesale to
+  # silence one false positive trades a real safety net for a quiet log.
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL"
+
 [functions]
   node_bundler = "esbuild"
   # handlers.mjs lives outside the functions directory and is shared with the
