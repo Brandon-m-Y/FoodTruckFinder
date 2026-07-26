@@ -1,4 +1,4 @@
-# TruckMap *(working name)*
+# Find a Food Truck
 
 Open-data map of food trucks in Hamilton / Butler County, Ohio. Vanilla JS + Leaflet over
 Supabase Postgres/PostGIS. No build step, no framework, no Docker.
@@ -26,6 +26,7 @@ Working end to end against a live Supabase project. **Not launched, and not laun
 ## Run it
 
 ```bash
+cd truckmap
 npm install
 cp .env.example .env          # fill in SUPABASE_SECRET_KEY
 npm run dev                   # -> http://127.0.0.1:5173
@@ -36,6 +37,7 @@ Reads work without `.env`; writes return `503 write_api_disabled` until the secr
 ## Apply the schema
 
 ```bash
+cd truckmap
 npx supabase login
 npx supabase link --project-ref <ref>
 npm run db:push               # supabase db push
@@ -120,7 +122,7 @@ own appearances straight through PostgREST — RLS scopes them to their truck, a
 provenance so they can't forge a `source`. *(Schema is in place; the claim UI is not built.)*
 
 **The crowd** is anonymous, forever. There is deliberately **no anon INSERT policy on any table**.
-Every anonymous write goes through [`server/handlers.mjs`](server/handlers.mjs), which holds the
+Every anonymous write goes through [`server/handlers.mjs`](truckmap/server/handlers.mjs), which holds the
 `service_role` key, verifies a Cloudflare Turnstile token, applies per-IP daily caps, and calls a
 `SECURITY DEFINER` RPC that does the cap check, the insert and the audit row in one transaction.
 
@@ -196,11 +198,21 @@ Ordered by what would embarrass you fastest.
       reaching the table is public immediately. Turnstile alone does not cover a determined human.
 - [ ] **Remove the demo data** — `npm run purge-demo -- --yes`. The demo reviews are prose written to
       look like customers; on a public map they are indistinguishable from real ones.
-- [ ] **Client IP behind a proxy.** `server/dev.mjs` reads `socket.remoteAddress`, correct for local
-      dev. On a hosted deploy that is the *proxy* for every visitor — one shared `ip_hash`, so the
-      per-IP caps collapse into a single global cap and "one review per person" makes the entire
-      internet one person. Read the platform's client-IP header instead.
-- [ ] **Real seed data.** Four public records requests (see [`docs/FINDINGS.md`](docs/FINDINGS.md)).
+- [ ] **Set `TRUST_PROXY`** on the deploy. Without it the socket peer is the platform's own proxy —
+      identical for every visitor — so all traffic hashes to one `ip_hash`: the per-IP caps collapse
+      into a single global cap, and "one review per person" makes the entire internet one person.
+      `handlers.mjs` warns at boot if it detects a platform with `TRUST_PROXY` unset.
+- [ ] **Empty `RATE_LIMIT_EXEMPT_IPS`** in production. A home address left there is permanently
+      exempt from every cap.
+- [ ] **Real seed data.** Four public records requests (see [`docs/FINDINGS.md`](truckmap/docs/FINDINGS.md)).
+
+## Deploying
+
+[`truckmap/netlify.toml`](truckmap/netlify.toml) and
+[`truckmap/netlify/functions/api.mjs`](truckmap/netlify/functions/api.mjs) are written and inert
+until you connect a site. The function is a thin adapter over `server/handlers.mjs` — same
+validation, same rate limiting, shared verbatim with the dev server. Required site environment
+variables are listed at the top of the function. Set the base directory to `truckmap`.
 
 ## Not built yet
 
@@ -208,14 +220,13 @@ Ordered by what would embarrass you fastest.
 - Operator flow: claim a truck via Supabase Auth, post today's location
 - Promoting orphan sighting clusters (`appearance_id IS NULL`) into discovered appearances
 - `reliability` learner (see `GROWTH:` in `0001`)
-- Netlify Function wrapping `server/handlers.mjs` + deploy wiring
 
 ---
 
 ## Licence
 
-**AGPL-3.0-or-later.** Full text in [`LICENSE`](LICENSE); attribution and third-party notices in
-[`NOTICE`](NOTICE).
+**AGPL-3.0-or-later.** Copyright © 2026 Brandon Ytuarte. Full text in [`LICENSE`](LICENSE);
+attribution and third-party notices in [`NOTICE`](NOTICE).
 
 The AGPL is inherited from OpenDrop and it is the right licence for this anyway: section 13 means
 that running a modified version on a public server obliges you to offer those users your source. A

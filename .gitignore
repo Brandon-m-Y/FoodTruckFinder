@@ -1,0 +1,25 @@
+node_modules/
+
+# Secrets. The Supabase PUBLISHABLE key is safe in the browser (RLS protects the
+# data) and lives in truckmap/frontend/js/config.js. Anything here is genuinely
+# secret: the SECRET/service_role key, the database password, the Turnstile
+# secret, and the exempt-IP list.
+#
+# No leading slash on purpose — these match at ANY depth, so moving the project
+# into or out of a subdirectory cannot silently uncover them.
+.env
+.env.*
+!.env.example
+
+# Supabase CLI local state. Leading `**/` for the same reason: this file now sits
+# at the repo root while the project lives in truckmap/, and a bare
+# `supabase/.temp/` would only match a top-level supabase/ that does not exist.
+# That is exactly how it lost coverage when this file moved up a level.
+**/supabase/.temp/
+**/supabase/.branches/
+
+# Netlify local build output
+.netlify/
+
+.DS_Store
+Thumbs.db
