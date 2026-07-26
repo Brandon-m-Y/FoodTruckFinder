@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TruckMap — Butler County food trucks</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">🌮</span>
+      <h1>Find a Food Truck Near You</h1>
+      <p class="sub">Butler County, Ohio</p>
+    </div>
+
+    <div class="when" role="group" aria-labelledby="when-label">
+      <div class="when-head">
+        <span id="when-label" class="when-title">Showing trucks for</span>
+        <output id="when-value" class="when-value">now</output>
+        <button id="btn-now" class="btn-now" type="button">Now</button>
+      </div>
+      <input id="scrubber" class="scrubber" type="range"
+             min="0" max="336" step="1" value="0"
+             aria-labelledby="when-label"
+             aria-describedby="when-value" />
+      <div class="scrubber-ticks" aria-hidden="true">
+        <span>now</span><span>+2d</span><span>+7d</span><span>+14d</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div id="map" role="application" aria-label="Map of food truck locations"></div>
+
+    <!-- Not "in view": main.js deliberately does NOT bbox-filter, so this is
+         every truck matching the selected time, panning or not. -->
+    <aside class="panel" aria-label="Trucks at the selected time">
+      <div class="panel-head">
+        <h2 id="list-count">Loading…</h2>
+        <p class="legend">
+          <span class="dot live"></span>live
+          <span class="dot likely"></span>likely
+          <span class="dot scheduled"></span>scheduled
+          <span class="dot unlikely"></span>unlikely
+        </p>
+      </div>
+      <ul id="list" class="list"></ul>
+      <div class="panel-foot">
+        <button id="btn-add-truck" class="btn" type="button">+ Add a missing truck</button>
+        <p class="disclaimer">
+          Confidence reflects how strongly we believe a truck is at a spot at the selected time —
+          who said so, how long ago, and whether anyone has confirmed it in person.
+        </p>
+        <!-- AGPL §13 source offer. Populated from config.js SOURCE_URL; stays
+             empty (and invisible) until a repository URL exists. -->
+        <p class="colophon" id="colophon" hidden></p>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Truck detail: reviews, sightings, suggested edits -->
+  <div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-label="Truck details" hidden>
+    <div class="sheet-scrim"></div>
+    <div class="sheet-panel">
+      <button class="sheet-close" type="button" aria-label="Close">&times;</button>
+      <div id="sheet-body" class="sheet-body"></div>
+    </div>
+  </div>
+
+  <!-- Add a truck we don't have yet -->
+  <div id="add-sheet" class="sheet" role="dialog" aria-modal="true" aria-label="Add a truck" hidden>
+    <div class="sheet-scrim"></div>
+    <div class="sheet-panel">
+      <button class="sheet-close" type="button" aria-label="Close">&times;</button>
+      <div class="sheet-body">
+        <header class="sheet-head">
+          <h2>Add a missing truck</h2>
+          <p class="sheet-sub">
+            Submissions are queued for review before they appear on the map.
+          </p>
+        </header>
+        <form id="add-form" class="form">
+          <label class="lbl" for="af-name">Truck name *</label>
+          <input class="input" id="af-name" name="name" required maxlength="120"
+                 placeholder="e.g. Taqueria La Bamba" />
+
+          <!-- A group of checkboxes, not one control, so <label for> has nothing
+               valid to point at. fieldset/legend is the markup for this. -->
+          <fieldset class="chipset">
+            <legend class="lbl">Cuisine</legend>
+            <div id="af-cuisines" class="chips"></div>
+          </fieldset>
+
+          <label class="lbl" for="af-desc">Description</label>
+          <textarea class="input" id="af-desc" name="description" rows="3" maxlength="2000"
+                    placeholder="What do they serve? What's good?"></textarea>
+
+          <label class="lbl" for="af-where">Where have you seen it?</label>
+          <input class="input" id="af-where" name="where_note" maxlength="300"
+                 placeholder="e.g. Fridays outside the brewery on Main St" />
+
+          <!-- Not a <label>: a map and two buttons are not a form control, and a
+               label pointing at nothing is announced as an orphan. A group with
+               its own heading is what this actually is. -->
+          <div role="group" aria-labelledby="af-pin-lbl" aria-describedby="af-pin-hint">
+            <p class="lbl" id="af-pin-lbl">Drop a pin — is it there now?</p>
+            <p class="hint" id="af-pin-hint">
+              Click the map to place the truck. With a pin it appears on the map
+              straight away, marked unconfirmed until someone else spots it.
+              Without one it just goes in the queue.
+            </p>
+            <div class="btn-row">
+              <button class="btn" id="af-locate" type="button">📍 Use my location</button>
+              <button class="btn" id="af-clear-pin" type="button" hidden>Clear pin</button>
+            </div>
+            <div id="af-map" class="pickmap"></div>
+          </div>
+
+          <label class="lbl" for="af-hours">How long will it be there?</label>
+          <select class="input" id="af-hours" name="hours">
+            <option value="1">About an hour</option>
+            <option value="2">A couple of hours</option>
+            <option value="3" selected>About 3 hours</option>
+            <option value="5">Most of the afternoon</option>
+            <option value="8">All day</option>
+          </select>
+
+          <label class="lbl" for="af-fb">Facebook or Instagram</label>
+          <input class="input" id="af-fb" name="facebook" maxlength="300"
+                 placeholder="Where they post their schedule" />
+
+          <button class="btn primary" type="submit">Submit truck</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

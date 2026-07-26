@@ -1,0 +1,99 @@
+TruckMap — open-data map of food trucks in Hamilton / Butler County, Ohio.
+
+Copyright (C) 2026 <COPYRIGHT HOLDER>
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along
+with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+================================================================================
+UPSTREAM WORK
+================================================================================
+
+This project began from and is derived from:
+
+    OpenDrop
+    Copyright (C) Andrew Brown
+    https://github.com/WanderingAstronomer/OpenDrop
+    Licensed under the GNU Affero General Public License v3.0
+
+OpenDrop is an open-data map of clothing-donation drop-off points. TruckMap was
+started by cloning it and reworking it for a different subject. Used both under
+the terms of the AGPL and with the author's express written permission.
+
+The AGPL is why this project is also AGPL: section 5(c) requires that a derived
+work be released under the same license. The permission from the author is in
+addition to that grant, not a substitute for it, and does not remove the
+attribution and source-availability obligations below.
+
+WHAT CARRIED OVER, AND WHAT DID NOT
+
+  Carried over: the overall shape of the thing — a Postgres/PostGIS schema
+  behind a no-build Leaflet frontend, a numeric confidence score attached to
+  each mapped point, an anonymous crowd-reporting path gated server-side, and a
+  pending-submissions queue that never writes the public table directly.
+
+  Reworked: the core model is inverted. OpenDrop tracks fixed points whose
+  EXISTENCE decays over months; TruckMap tracks moving vendors whose LOCATION is
+  true for a few hours. That changes the confidence function from a stored
+  column into a query-time function parameterized by `as_of`, and it introduces
+  schedules, appearances and sightings, which have no OpenDrop equivalent.
+
+  The schema, the confidence model, the frontend and the write API in this
+  repository were written for this project. The debt is architectural, and it is
+  a real debt: this exists because OpenDrop showed the shape first.
+
+
+================================================================================
+SECTION 13 — NETWORK USE
+================================================================================
+
+The AGPL differs from the GPL in one respect that matters for a hosted map:
+running this software on a server and letting the public interact with it over a
+network counts as conveying it. If you deploy a modified version, section 13
+obliges you to offer those users the corresponding source of YOUR version.
+
+In practice: keep a visible link from the deployed site to the source of the
+exact revision it is running.
+
+
+================================================================================
+THIRD-PARTY COMPONENTS
+================================================================================
+
+Loaded by the browser at runtime, not vendored into this repository:
+
+  Leaflet 1.9.4                      BSD-2-Clause
+  https://leafletjs.com/             (unpkg CDN, subresource-integrity pinned)
+
+  @supabase/supabase-js 2.x          MIT
+  https://github.com/supabase/supabase-js   (esm.sh in the browser, npm on the server)
+
+  Cloudflare Turnstile               Cloudflare Terms of Service
+  https://challenges.cloudflare.com/ (loaded only when a sitekey is configured)
+
+Map data:
+
+  © OpenStreetMap contributors       Open Database License (ODbL) 1.0
+  https://www.openstreetmap.org/copyright
+
+  Tiles are served from tile.openstreetmap.org under the OSMF Tile Usage Policy.
+  Attribution is rendered in the map control and must not be removed. A
+  production deployment at any real traffic level is expected to move to its own
+  tile source rather than lean on the community servers.
+
+Public data:
+
+  Ohio mobile food service license records, obtained by public records request
+  from county health districts. Public records; not copyrightable as facts.
+  See docs/FINDINGS.md for provenance and the reasoning behind what this project
+  will and will not ingest.

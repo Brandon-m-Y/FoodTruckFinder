@@ -1,0 +1,15 @@
+node_modules/
+
+# Secrets. The Supabase PUBLISHABLE key is safe in the browser (RLS protects the
+# data) and lives in frontend/js/config.js. Anything here is genuinely secret:
+# the SECRET/service_role key, the database password, the Turnstile secret.
+.env
+.env.*
+!.env.example
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+
+.DS_Store
+Thumbs.db

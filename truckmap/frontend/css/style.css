@@ -1,0 +1,507 @@
+/* TruckMap — no build step, no framework. Plain CSS custom properties. */
+
+/* Palette: olive green, cream, tan, white. */
+:root {
+  --bg: #ffffff;
+  --bg-soft: #f4efe2;   /* cream */
+  --fg: #2b2d20;        /* near-black with an olive cast */
+  --fg-soft: #6a6a54;   /* muted olive */
+  --line: #ddd2b9;      /* tan */
+  --accent: #5f7027;    /* olive green */
+
+  /* Confidence buckets. Mirrors public.confidence_bucket() in the database:
+     live >=70, likely >=40, scheduled >=20, else unlikely.
+
+     Visual weight deliberately tracks confidence: solid dark olive down to pale
+     tan. `unlikely` is the one that takes DARK text (--unlikely-fg) rather than
+     white — darkening it enough to carry white text pushed it to within 1.2:1
+     of `scheduled`, which made the two buckets indistinguishable. They encode
+     real meaning, so separation wins over uniform styling. All four clear
+     4.5:1 against their own text colour. */
+  --live: #4f6b28;      /* olive green  — white text, 6.06:1 */
+  --likely: #96691f;    /* bronze       — white text, 4.84:1 */
+  --scheduled: #6e6d55; /* olive grey   — white text, 5.27:1 */
+  --unlikely: #cfc4ac;  /* pale tan     — dark text,  8.10:1 */
+  --unlikely-fg: #2b2d20;
+
+  --shadow: 0 1px 2px rgb(43 45 32 / 0.07), 0 4px 12px rgb(43 45 32 / 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #22241b;      /* deep olive-black */
+    --bg-soft: #2c2f23;
+    --fg: #f2eee1;      /* cream */
+    --fg-soft: #a9a794;
+    --line: #3e4234;
+    --accent: #a7bd6d;  /* light olive, legible on the dark ground */
+    --live: #8fbf5f;
+    --likely: #d9a94e;
+    --scheduled: #a9a98b;
+    --unlikely: #b3ad96;
+    --unlikely-fg: #22241b;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 12px rgb(0 0 0 / 0.35);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+body { display: flex; flex-direction: column; }
+
+/* ---------- top bar ---------- */
+
+/* Brand left, scrubber right. Wraps to stacked on narrow screens. */
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 2.5rem;
+  padding: 1.1rem 1.4rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-soft);
+  z-index: 500;
+}
+
+/* Grid lockup: the mark spans both rows to the left of the title/subtitle
+   stack. Done in CSS rather than with a wrapper div so the markup stays flat. */
+.brand {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "mark title"
+    "mark sub";
+  align-items: center;
+  column-gap: 0.75rem;
+}
+.brand-mark {
+  grid-area: mark;
+  font-size: 2.7rem;
+  line-height: 1;
+  align-self: center;
+}
+.brand h1 {
+  grid-area: title;
+  margin: 0;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+  align-self: end;
+}
+.brand .sub {
+  grid-area: sub;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--fg-soft);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  align-self: start;
+}
+
+/* ---------- time scrubber ---------- */
+
+/* Takes the right side, but yields to the brand rather than squeezing it. */
+.when { flex: 1 1 20rem; max-width: 32rem; min-width: 15rem; }
+
+.when-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  margin-bottom: 0.15rem;
+}
+.when-title { font-size: 0.78rem; color: var(--fg-soft); }
+.when-value { font-size: 0.87rem; font-weight: 600; color: var(--accent); }
+
+.btn-now {
+  margin-left: auto;
+  padding: 0.18rem 0.6rem;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--fg-soft);
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.btn-now:hover { color: var(--fg); }
+.btn-now[hidden] { display: none; }
+
+.scrubber { width: 100%; margin: 0; accent-color: var(--accent); cursor: grab; }
+.scrubber:active { cursor: grabbing; }
+
+.scrubber-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--fg-soft);
+  margin-top: -0.1rem;
+}
+
+/* ---------- layout ---------- */
+
+.layout { flex: 1; display: flex; min-height: 0; }
+#map { flex: 1; min-width: 0; background: var(--bg-soft); }
+
+.panel {
+  width: 21rem;
+  flex-shrink: 0;
+  border-left: 1px solid var(--line);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.panel-head { padding: 0.85rem 1rem 0.6rem; border-bottom: 1px solid var(--line); }
+.panel-head h2 { margin: 0 0 0.4rem; font-size: 0.92rem; }
+
+.legend { margin: 0; font-size: 0.72rem; color: var(--fg-soft); display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
+.dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; display: inline-block; }
+.dot + .dot { margin-left: 0.4rem; }
+.dot.live { background: var(--live); }
+.dot.likely { background: var(--likely); }
+.dot.scheduled { background: var(--scheduled); }
+.dot.unlikely { background: var(--unlikely); }
+
+/* ---------- list ---------- */
+
+.list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+
+.list li { border-bottom: 1px solid var(--line); }
+
+.row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.7rem 1rem;
+  background: none;
+  border: 0;
+  border-left: 3px solid transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.row:hover, .row:focus-visible { background: var(--bg-soft); }
+.row.live { border-left-color: var(--live); }
+.row.likely { border-left-color: var(--likely); }
+.row.scheduled { border-left-color: var(--scheduled); }
+.row.unlikely { border-left-color: var(--unlikely); }
+
+.row-name { font-weight: 600; font-size: 0.9rem; }
+.row-meta { font-size: 0.78rem; color: var(--fg-soft); margin-top: 0.1rem; }
+
+.badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.05rem 0.4rem;
+  border-radius: 3px;
+  color: #fff;
+  vertical-align: 0.05em;
+}
+.badge.live { background: var(--live); }
+.badge.likely { background: var(--likely); }
+.badge.scheduled { background: var(--scheduled); }
+.badge.unlikely { background: var(--unlikely); color: var(--unlikely-fg); }
+
+.empty { padding: 1.4rem 1rem; color: var(--fg-soft); font-size: 0.87rem; }
+
+.disclaimer {
+  margin: 0;
+  padding: 0.7rem 1rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--fg-soft);
+}
+
+/* ---------- map markers ---------- */
+
+.pin {
+  width: 1.55rem; height: 1.55rem;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: var(--shadow);
+  display: grid;
+  place-items: center;
+  font-size: 0.8rem;
+}
+.pin.live { background: var(--live); }
+.pin.likely { background: var(--likely); }
+.pin.scheduled { background: var(--scheduled); }
+.pin.unlikely { background: var(--unlikely); color: var(--unlikely-fg); }
+
+/* Leaflet hardcodes a white popup, so it has to be themed explicitly or the
+   cream/dark palette stops at the popup edge. */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: var(--shadow);
+}
+.leaflet-popup-content { margin: 0.75rem 0.9rem; font: inherit; }
+.pop-name { font-weight: 700; font-size: 0.95rem; }
+.pop-line { font-size: 0.8rem; color: var(--fg-soft); margin-top: 0.15rem; }
+.pop-conf { margin-top: 0.45rem; font-size: 0.78rem; }
+
+/* ---------- status ---------- */
+
+.status {
+  position: fixed;
+  left: 50%;
+  bottom: 1.2rem;
+  transform: translateX(-50%);
+  z-index: 900;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.82rem;
+  box-shadow: var(--shadow);
+}
+.status[hidden] { display: none; }
+.status.err { background: #a33718; color: #fff; }
+
+/* ---------- buttons & forms ---------- */
+
+.btn {
+  font: inherit;
+  font-size: 0.83rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-soft);
+  color: var(--fg);
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { border-color: var(--fg-soft); }
+.btn:disabled { opacity: 0.55; cursor: progress; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.pop-btn { margin-top: 0.55rem; width: 100%; }
+
+.form { display: flex; flex-direction: column; gap: 0.55rem; margin-top: 0.4rem; }
+.lbl { font-size: 0.78rem; color: var(--fg-soft); margin-top: 0.2rem; }
+
+.input {
+  font: inherit;
+  font-size: 0.87rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  width: 100%;
+  resize: vertical;
+}
+.input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.hint { font-size: 0.77rem; color: var(--fg-soft); margin: 0.2rem 0; line-height: 1.45; }
+
+/* star picker — radios styled as stars, reversed so :checked fills leftward */
+.stars-pick { border: 0; padding: 0; margin: 0; display: flex; flex-direction: row-reverse; justify-content: flex-end; }
+.stars-pick legend { float: left; width: 100%; }
+.stars-pick input { position: absolute; opacity: 0; width: 0; height: 0; }
+.stars-pick label {
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--line);
+  cursor: pointer;
+  padding: 0 0.05rem;
+}
+.stars-pick input:checked ~ label,
+.stars-pick label:hover,
+.stars-pick label:hover ~ label { color: #c9962e; }
+.stars-pick input:focus-visible + label { outline: 2px solid var(--accent); }
+
+/* cuisine chips */
+/* fieldset/legend is the correct grouping for a set of checkboxes, but it
+   arrives with a browser default border and inline-block legend. Strip both so
+   the group is semantic to a screen reader and invisible to everyone else. */
+.chipset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.chipset legend { padding: 0; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.chip-input { position: absolute; opacity: 0; width: 0; height: 0; }
+.chip {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+}
+.chip-input:checked + .chip { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip-input:focus-visible + .chip { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---------- detail sheet ---------- */
+
+.sheet { position: fixed; inset: 0; z-index: 1000; }
+.sheet[hidden] { display: none; }
+.sheet-scrim { position: absolute; inset: 0; background: rgb(0 0 0 / 0.45); }
+
+.sheet-panel {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: min(26rem, 100%);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  animation: slide-in 0.18s ease-out;
+}
+@keyframes slide-in { from { transform: translateX(1.5rem); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sheet-panel { animation: none; } }
+
+.sheet-close {
+  position: absolute;
+  top: 0.5rem; right: 0.6rem;
+  width: 2rem; height: 2rem;
+  font-size: 1.4rem;
+  line-height: 1;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bg-soft);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.sheet-body { overflow-y: auto; padding: 1.1rem 1.2rem 2rem; }
+.sheet-head h2 { margin: 0 2rem 0.2rem 0; font-size: 1.15rem; }
+.sheet-sub { margin: 0; font-size: 0.8rem; color: var(--fg-soft); }
+.sheet-rating { margin: 0.4rem 0 0; }
+.sheet-desc { font-size: 0.88rem; margin: 0.8rem 0 0; }
+
+.sheet-sec { margin-top: 1.3rem; }
+.sheet-sec h3 { margin: 0 0 0.3rem; font-size: 0.92rem; }
+details.sheet-sec summary { cursor: pointer; font-size: 0.88rem; font-weight: 600; }
+
+.stars { color: #c9962e; letter-spacing: 0.05em; }
+
+.reviews { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+.reviews li { padding: 0.6rem 0; border-top: 1px solid var(--line); }
+.review-head { display: flex; align-items: baseline; gap: 0.5rem; }
+.review-who { font-size: 0.78rem; color: var(--fg-soft); }
+.review-body { margin: 0.25rem 0 0; font-size: 0.87rem; }
+
+.pending-note { margin-top: 1rem; font-style: italic; }
+
+.panel-foot { border-top: 1px solid var(--line); padding: 0.7rem 1rem; }
+.panel-foot .disclaimer { padding: 0.6rem 0 0; border: 0; }
+
+/* AGPL source offer. Quiet, but it must survive the .disclaimer being hidden on
+   narrow screens — the licence obligation does not stop at 760px. */
+.colophon {
+  margin: 0.5rem 0 0;
+  font-size: 0.72rem;
+  color: var(--fg-soft);
+}
+.colophon a { color: inherit; text-underline-offset: 2px; }
+.colophon a:hover { color: var(--fg); }
+
+/* ---------- narrow screens ---------- */
+
+@media (max-width: 760px) {
+  .layout { flex-direction: column; }
+  #map { flex: 1 1 55%; }
+  .panel { width: auto; flex: 1 1 45%; border-left: 0; border-top: 1px solid var(--line); }
+  .disclaimer { display: none; }
+
+  /* Once the topbar wraps, the header eats the map. Tighten it and shrink the
+     mark so the brand still reads as a lockup rather than a stack of parts. */
+  .topbar { padding: 0.8rem 1rem; gap: 0.7rem; }
+  .brand-mark { font-size: 2rem; }
+  .when { flex-basis: 100%; max-width: none; }
+}
+
+/* Turnstile widget. appearance:"interaction-only" means it usually renders
+   nothing at all — reserve no space until it actually has content. */
+.captcha:not(:empty) { margin: 0.4rem 0; }
+
+/* Location picker inside the add-truck form */
+.pickmap {
+  height: 13rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-soft);
+}
+.pickmap .leaflet-container { background: var(--bg-soft); }
+
+/* Confirms the chosen rating in words. The picker is pure CSS, so a mis-wired
+   scale looks perfectly fine — this makes the recorded value visible. */
+.stars-readout {
+  font-size: 0.78rem;
+  color: var(--fg-soft);
+  min-height: 1.2em;
+  margin-top: -0.3rem;
+}
+
+/* Review list: 5 rows visible, the rest scrolling up from behind the pager.
+ *
+ * This IS a nested scroller, deliberately — the point is that the "Leave a
+ * review" form (which now sits ABOVE the list) and the sections after it stay
+ * reachable without scrolling past a long list. Two things keep it from reading
+ * as a stray second scrollbar:
+ *   - the mask fades the bottom edge, so rows dissolve into the next section
+ *     rather than stopping at a hard line;
+ *   - the scrollbar itself is thin and low-contrast.
+ * max-height is set in JS (capHeight) from the measured 6th row. */
+.reviews.peek {
+  overflow-y: auto;
+  padding-right: 0.4rem;
+  overscroll-behavior: contain;      /* don't chain into the sheet at the ends */
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.2rem), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 2.2rem), transparent 100%);
+  transition: -webkit-mask-image 0.15s linear, mask-image 0.15s linear;
+}
+
+/* At the end there is nothing left to hint at, so drop the fade. */
+.reviews.peek.at-end {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.reviews.peek::-webkit-scrollbar { width: 6px; }
+.reviews.peek::-webkit-scrollbar-track { background: transparent; }
+.reviews.peek::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+
+/* What the list tucks under: opaque, so rows genuinely disappear behind it
+   rather than showing through. Only the pager is a SIBLING of .reviews — the
+   forms live outside .sheet-sec, so no `~` selector can reach them. */
+.reviews.peek + .pager {
+  position: relative;
+  background: var(--bg);
+  z-index: 1;
+}
+
+/* The review form now leads the section, so it needs the section's own top
+   spacing — it is a bare .form, not a .sheet-sec. */
+.review-form { margin-top: 1.3rem; }
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+.pager:empty { display: none; }
+.pager-btn { font-size: 0.78rem; padding: 0.28rem 0.6rem; }
+.pager-label { font-size: 0.76rem; color: var(--fg-soft); }

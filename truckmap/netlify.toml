@@ -1,0 +1,40 @@
+# Netlify deploy config.
+#
+# There is no build step — the frontend is hand-written ES modules and plain CSS,
+# served as-is. `npm install` still runs so the function can import
+# @supabase/supabase-js, but nothing is compiled or bundled by us.
+
+[build]
+  publish = "frontend"
+  command = "npm install --omit=dev"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+  # handlers.mjs lives outside the functions directory and is shared with the
+  # local dev server, so it has to be pulled into the bundle explicitly.
+  included_files = ["server/**"]
+
+# /api/* is claimed by the function's own `config.path` export, so no redirect
+# rule is needed here. Declaring one as well would shadow it.
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Geolocation is used by the "Use my location" button on the add-truck form.
+    Permissions-Policy = "geolocation=(self), camera=(), microphone=(), payment=()"
+
+# Static assets are fingerprint-free, so they must revalidate — a cached
+# config.js holding a rotated Supabase key would break the map until the
+# browser happened to refetch.
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

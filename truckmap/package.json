@@ -1,0 +1,21 @@
+{
+  "name": "truckmap",
+  "version": "0.1.0",
+  "description": "Open-data map of food trucks in Hamilton / Butler County, Ohio.",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "dev": "node server/dev.mjs",
+    "db:push": "supabase db push",
+    "db:status": "supabase migration list",
+    "smoke": "node scripts/smoke.mjs",
+    "purge-demo": "node scripts/purge-demo.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.8"
+  },
+  "devDependencies": {
+    "supabase": "^2.109.1"
+  }
+}

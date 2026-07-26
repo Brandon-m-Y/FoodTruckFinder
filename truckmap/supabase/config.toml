@@ -1,0 +1,17 @@
+# Supabase CLI config.
+#
+# Deliberately minimal. `supabase init` generates ~414 lines configuring the
+# LOCAL development stack — Studio, Mailpit, edge runtime, realtime, analytics,
+# storage, and every auth provider. All of it runs in Docker containers, and we
+# do not use Docker: this project works directly against the hosted project via
+# `supabase db push`. Carrying that config would describe a local stack that does
+# not exist and that nobody here can start.
+#
+# The linked project ref lives in supabase/.temp/linked-project.json (written by
+# `supabase link`, gitignored), NOT here. project_id below is only the local name.
+#
+# If local development is ever wanted, install Docker and run `supabase init` in
+# a scratch directory — that regenerates the full file from scratch. Nothing is
+# lost by not carrying it here; the generated defaults are the same every time.
+
+project_id = "truckmap"
