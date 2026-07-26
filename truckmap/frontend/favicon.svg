@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!--
+    The same 🌮 the header uses, as the tab icon.
+
+    An emoji in a <text> node rather than drawn paths: the header mark is an
+    emoji too, so this stays identical to it by construction. Draw a taco by
+    hand and the two drift the first time either is touched.
+
+    Rendered by the VIEWER's emoji font, so it looks native on each platform —
+    Apple's taco on macOS, Segoe's on Windows — exactly like the header. A
+    hand-drawn path would look the same everywhere, which sounds like a virtue
+    until it sits next to a header mark that does not match it.
+
+    dominant-baseline is deliberately avoided; support for it in SVG favicons is
+    patchy. y="52" with font-size 54 centres it the boring, reliable way.
+  -->
+  <text x="32" y="52" font-size="54" text-anchor="middle">🌮</text>
+</svg>
