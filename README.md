@@ -208,11 +208,26 @@ Ordered by what would embarrass you fastest.
 
 ## Deploying
 
-[`truckmap/netlify.toml`](truckmap/netlify.toml) and
+[`netlify.toml`](netlify.toml) and
 [`truckmap/netlify/functions/api.mjs`](truckmap/netlify/functions/api.mjs) are written and inert
 until you connect a site. The function is a thin adapter over `server/handlers.mjs` — same
-validation, same rate limiting, shared verbatim with the dev server. Required site environment
-variables are listed at the top of the function. Set the base directory to `truckmap`.
+validation, same rate limiting, shared verbatim with the dev server.
+
+**Leave every build setting in the Netlify UI blank.** `netlify.toml` sits at the repository root
+and declares `base = "truckmap"`, so Netlify finds it before it needs to know anything, and
+everything else resolves from there. UI settings only override the file and cause drift.
+
+| Setting | Value | Where it comes from |
+|---|---|---|
+| Base directory | `truckmap` | `netlify.toml` |
+| Build command | `npm install --omit=dev` | `netlify.toml` |
+| Publish directory | `frontend` (→ `truckmap/frontend`) | `netlify.toml` |
+| Functions directory | `netlify/functions` | `netlify.toml` |
+
+Environment variables are the one thing the UI must supply — they are secrets and cannot live in a
+committed file. The full list is at the top of
+[`api.mjs`](truckmap/netlify/functions/api.mjs); `TRUST_PROXY=netlify` is the one whose absence
+fails silently.
 
 ## Not built yet
 

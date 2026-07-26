@@ -3,10 +3,24 @@
 # There is no build step — the frontend is hand-written ES modules and plain CSS,
 # served as-is. `npm install` still runs so the function can import
 # @supabase/supabase-js, but nothing is compiled or bundled by us.
+#
+# THIS FILE LIVES AT THE REPOSITORY ROOT, NOT IN truckmap/
+# Netlify looks for netlify.toml in the base directory — so if this file were
+# inside truckmap/, Netlify could only find it once you had already told the UI
+# that base is truckmap. Config that can only be read after you have configured
+# the thing it configures. Keeping it at the root means `base` below is
+# authoritative and the Netlify UI needs no build settings at all.
 
 [build]
+  # Everything below is resolved RELATIVE TO base, so these stay short.
+  base    = "truckmap"
   publish = "frontend"
+
+  # Netlify already runs an automatic `npm install` when it finds package.json.
+  # This second pass drops devDependencies — the Supabase CLI is ~50MB and is a
+  # local schema-migration tool, never something the deployed site executes.
   command = "npm install --omit=dev"
+
   functions = "netlify/functions"
 
 [functions]
