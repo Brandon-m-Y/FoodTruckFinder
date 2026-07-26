@@ -40,6 +40,33 @@
     # Geolocation is used by the "Use my location" button on the add-truck form.
     Permissions-Policy = "geolocation=(self), camera=(), microphone=(), payment=()"
 
+    # Content Security Policy — an allowlist of every origin the page may reach.
+    #
+    # This is the backstop for the supply-chain risk that motivated dropping the
+    # Supabase client library from the browser. Leaflet is the only third-party
+    # SCRIPT left, and it is already pinned with a subresource-integrity hash, so
+    # a compromised unpkg cannot alter it. The CSP means that even if some other
+    # injected code did run, it could not phone home: connect-src permits exactly
+    # one external host.
+    #
+    # Every entry below is load-bearing. In order:
+    #   script-src   unpkg = Leaflet (SRI-pinned); challenges.cloudflare.com =
+    #                Turnstile, loaded lazily and only when a sitekey exists.
+    #   style-src    'unsafe-inline' is unavoidable: Leaflet positions every tile
+    #                and marker with element.style, which CSP treats as inline.
+    #                It applies to styles only, never to script.
+    #   img-src      OSM raster tiles; data: for Leaflet's inline 1x1 GIFs;
+    #                unpkg for the marker sprites leaflet.css references.
+    #   connect-src  the Supabase project (PostgREST reads), 'self' (/api/*
+    #                writes), and Turnstile. That last one is NOT decoration:
+    #                the widget calls home, and with only script-src and
+    #                frame-src listed the policy looks correct locally — because
+    #                the always-pass TEST keys render nothing — and then breaks
+    #                the moment real keys go live. No analytics, no beacons.
+    #   frame-src    Turnstile renders its challenge in an iframe.
+    #   frame-ancestors 'none' stops this map being embedded to phish sightings.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://unpkg.com https://challenges.cloudflare.com; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://detmkrivpmfljqfazdzx.supabase.co https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+
 # Static assets are fingerprint-free, so they must revalidate — a cached
 # config.js holding a rotated Supabase key would break the map until the
 # browser happened to refetch.

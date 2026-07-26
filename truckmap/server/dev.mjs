@@ -60,6 +60,31 @@ try {
   resolveClientIp = (_h, socketIp) => socketIp; // never reached; keeps clientIp total
 }
 
+/**
+ * Serve the SAME Content-Security-Policy the deploy sends.
+ *
+ * A CSP that only exists in production is a CSP you meet for the first time
+ * when the live site breaks. Adding a third-party script locally would work
+ * fine, pass review, and fail on deploy with a console error nobody sees.
+ *
+ * Read out of netlify.toml rather than copied, so there is one definition and
+ * no drift. A regex, not a TOML parser — Node has no built-in one, and this
+ * only needs a single known key. On any failure the dev server says so and
+ * carries on without a CSP; a broken regex should not stop local development.
+ */
+function loadCsp() {
+  const toml = resolve(ROOT, "..", "netlify.toml");
+  try {
+    const m = /^\s*Content-Security-Policy\s*=\s*"([^"]+)"/m.exec(readFileSync(toml, "utf8"));
+    if (m) return m[1];
+    console.warn("  No Content-Security-Policy found in netlify.toml — serving without one.\n");
+  } catch {
+    console.warn(`  Could not read ${toml} — serving without a CSP.\n`);
+  }
+  return null;
+}
+const CSP = loadCsp();
+
 const MIME = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -127,6 +152,7 @@ function serveStatic(req, res, pathname) {
   res.writeHead(200, {
     "content-type": MIME[extname(file)] ?? "application/octet-stream",
     "cache-control": "no-store", // dev: always reflect the file on disk
+    ...(CSP ? { "content-security-policy": CSP } : {}),
   });
   createReadStream(file).pipe(res);
 }
@@ -176,7 +202,7 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, "127.0.0.1", () => {
-  console.log(`\n  TruckMap dev  ->  http://127.0.0.1:${PORT}`);
+  console.log(`\n  Food Truck Finder dev  ->  http://127.0.0.1:${PORT}`);
   console.log(`  static: ${PUBLIC}`);
   console.log(`  api:    POST /api/reviews  /api/edits  /api/submissions  /api/sightings\n`);
 });

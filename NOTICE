@@ -76,11 +76,22 @@ Loaded by the browser at runtime, not vendored into this repository:
   Leaflet 1.9.4                      BSD-2-Clause
   https://leafletjs.com/             (unpkg CDN, subresource-integrity pinned)
 
-  @supabase/supabase-js 2.x          MIT
-  https://github.com/supabase/supabase-js   (esm.sh in the browser, npm on the server)
-
   Cloudflare Turnstile               Cloudflare Terms of Service
   https://challenges.cloudflare.com/ (loaded only when a sitekey is configured)
+
+Server-side only, installed from npm against a lockfile — never sent to a
+browser:
+
+  @supabase/supabase-js              MIT
+  https://github.com/supabase/supabase-js
+
+  supabase (CLI, devDependency)      MIT
+  https://github.com/supabase/cli
+
+  The browser talks to PostgREST over plain fetch instead of loading a client
+  library from a CDN. A bare ES `import` cannot carry a subresource-integrity
+  hash, so a CDN-hosted library would be the one unverifiable script on a page
+  that renders user-submitted forms.
 
 Map data:
 
