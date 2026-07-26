@@ -1,4 +1,4 @@
-# TruckMap *(working name)*
+# Food Truck Finder
 
 Open-data map of food trucks in Hamilton / Butler County, Ohio. Vanilla JS + Leaflet over
 Supabase Postgres/PostGIS. No build step, no framework, no Docker.
