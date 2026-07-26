@@ -1,4 +1,4 @@
-Find a Food Truck — open-data map of food trucks in Hamilton / Butler County, Ohio.
+Food Truck Finder — open-data map of food trucks in Hamilton / Butler County, Ohio.
 
 Copyright (C) 2026 Brandon Ytuarte
 
@@ -26,8 +26,8 @@ This project began from and is derived from:
     https://github.com/WanderingAstronomer/OpenDrop
     Licensed under the GNU Affero General Public License v3.0
 
-OpenDrop is an open-data map of clothing-donation drop-off points. Find a Food
-Truck was started by cloning it and reworking it for a different subject. Used
+OpenDrop is an open-data map of clothing-donation drop-off points. Food Truck
+Finder was started by cloning it and reworking it for a different subject. Used
 both under the terms of the AGPL and with the author's express written
 permission.
 

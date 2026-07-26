@@ -13,10 +13,11 @@ export const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_ncPLfpqY2ggErrBM9h0VjA_I
 // the exact version they are using. A visible link is how that obligation is
 // discharged in practice.
 //
-// Null until the repository exists. The footer renders no link rather than a
-// dead one — a broken source link is worse than an honest absence, because it
-// looks like compliance without being it.
-export const SOURCE_URL = null; // e.g. "https://github.com/<you>/truckmap"
+// The footer renders no link when this is null, rather than a dead one — a
+// broken source link is worse than an honest absence, because it looks like
+// compliance without being it. Same reasoning applies if the repo is PRIVATE:
+// a link visitors cannot open does not discharge section 13.
+export const SOURCE_URL = "https://github.com/Brandon-m-Y/FoodTruckFinder";
 
 // Butler County, Ohio.
 export const DEFAULT_VIEW = { center: [39.44, -84.55], zoom: 11 };

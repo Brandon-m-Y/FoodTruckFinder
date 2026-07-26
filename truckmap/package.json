@@ -1,5 +1,5 @@
 {
-  "name": "find-a-food-truck",
+  "name": "food-truck-finder",
   "version": "0.1.0",
   "description": "Open-data map of food trucks in Hamilton / Butler County, Ohio.",
   "private": true,
