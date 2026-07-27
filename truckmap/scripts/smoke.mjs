@@ -161,6 +161,56 @@ for (const [fn, args] of Object.entries(RPC_PROBES)) {
     "IT RAN — EXECUTE is granted to PUBLIC; the server-side gate is bypassable");
 }
 
+// 8. Un-reviewed and rejected content must not be publicly readable.
+//
+// Migration 0007 shipped `truck_submissions using (status = 'pending')`, which
+// reads as "show what is queued" and means "publish everything nobody has
+// checked yet": free-text name/description/phone, anonymous, three per IP per
+// day, served by PostgREST to anyone who asked. 0014 closed it. These assert it
+// stays closed, because the failure is completely silent — the map looks fine.
+{
+  const { data, error } = await db.from("truck_submissions").select("id");
+  if (error) ok("truck_submissions closed to anon", `(${error.code})`);
+  else if (!data.length) ok("truck_submissions closed to anon", "(0 rows)");
+  else bad("truck_submissions closed to anon",
+    `${data.length} un-reviewed submissions are publicly readable`);
+}
+{
+  const { data, error } = await db.from("truck_edits").select("id,status");
+  const leaked = (data ?? []).filter((r) => r.status !== "pending");
+  if (error) bad("truck_edits exposes only pending", error.message);
+  else if (leaked.length) bad("truck_edits exposes only pending",
+    `${leaked.length} row(s) with status ${[...new Set(leaked.map((r) => r.status))].join(",")}`
+    + " — rejected content is being served");
+  else ok("truck_edits exposes only pending", `(${data.length} rows)`);
+}
+
+// 9. Column-level exposure. `revoke select (col) from anon` is a NO-OP when anon
+//    holds table-level SELECT — the mistake 0014 made and 0015 fixed by
+//    revoking the table grant and re-granting named columns. Asserting the
+//    column is unreachable is the only way to know which of the two happened.
+{
+  const { error } = await db.from("appearances").select("created_by").limit(1);
+  error
+    ? ok("appearances.created_by not exposed", `(${error.code})`)
+    : bad("appearances.created_by not exposed",
+        "readable — the column revoke did not take (table-level SELECT overrides it)");
+}
+
+// 10. Moderation RPCs are service_role only.
+for (const [fn, args] of [
+  ["moderate_truck", { p_truck_id: 1, p_hide: false }],
+  ["moderate_review", { p_review_id: 1, p_hide: false }],
+  ["moderate_resolve", { p_kind: "edit", p_id: 1 }],
+  ["moderation_history", {}],
+]) {
+  const { error } = await db.rpc(fn, args);
+  if (error?.code === "42501") ok(`anonymous EXECUTE ${fn}() refused`, "(42501)");
+  else if (error) bad(`anonymous EXECUTE ${fn}() refused`,
+    `expected 42501, got ${error.code}: ${error.message}`);
+  else bad(`anonymous EXECUTE ${fn}() refused`, "IT RAN — anyone can moderate");
+}
+
 console.log(
   cuisines?.length ? `\n  cuisines seeded: ${cuisines.map((c) => c.key).join(", ")}` : ""
 );

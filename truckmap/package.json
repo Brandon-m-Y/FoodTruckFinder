@@ -11,7 +11,8 @@
     "db:status": "supabase migration list",
     "smoke": "node scripts/smoke.mjs",
     "check-deploy": "node scripts/check-deploy.mjs",
-    "purge-demo": "node scripts/purge-demo.mjs"
+    "purge-demo": "node scripts/purge-demo.mjs",
+    "moderate": "node scripts/moderate.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8"
