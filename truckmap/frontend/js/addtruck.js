@@ -1,5 +1,6 @@
 import { cuisines, submitTruck } from "./api.js";
 import { BASEMAP, DEFAULT_VIEW } from "./config.js";
+import { toast } from "./toast.js";
 import { guard } from "./turnstile.js";
 
 const sheet = document.getElementById("add-sheet");
@@ -88,28 +89,19 @@ function initPickMap() {
 }
 
 document.getElementById("af-locate").addEventListener("click", () => {
-  if (!navigator.geolocation) return toast("Your browser can't share a location.", true);
+  if (!navigator.geolocation) return toast("Your browser can't share a location.", { error: true });
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       const { latitude, longitude } = pos.coords;
       setPin(latitude, longitude);
       pickMap.setView([latitude, longitude], 16);
     },
-    () => toast("Couldn't get your location — click the map instead.", true),
+    () => toast("Couldn't get your location — click the map instead.", { error: true }),
     { enableHighAccuracy: true, timeout: 8000 }
   );
 });
 
 clearBtn.addEventListener("click", clearPin);
-
-function toast(msg, isError = false) {
-  const t = document.getElementById("status");
-  t.textContent = msg;
-  t.classList.toggle("err", isError);
-  t.hidden = false;
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => { t.hidden = true; }, 3800);
-}
 
 /** Cuisine vocabulary comes from the database, not a hardcoded list — adding
  *  "birria" is an INSERT into public.cuisines, not a frontend change. */
@@ -130,8 +122,11 @@ async function loadChips() {
       chipBox.append(input, label);
     }
     loaded = true;
-  } catch {
-    chipBox.textContent = "(couldn't load cuisine list)";
+  } catch (e) {
+    // Swallowing this left "(couldn't load cuisine list)" on screen with nothing
+    // in the console to say why, and no way to retry short of reloading.
+    console.error("cuisines:", e.detail ?? e);
+    chipBox.textContent = e.message;
   }
 }
 
@@ -139,10 +134,7 @@ export async function openAddTruck() {
   lastFocus = document.activeElement;
   await loadChips();
   sheet.hidden = false;
-  initPickMap();
-  // Leaflet measures its container on creation; inside a just-unhidden panel
-  // that measurement is stale, so force a re-measure once layout has settled.
-  requestAnimationFrame(() => pickMap.invalidateSize());
+  initPickMap(); // its ResizeObserver handles the measure-after-layout race
   document.getElementById("af-name").focus();
 }
 
@@ -193,7 +185,8 @@ form.addEventListener("submit", async (e) => {
     if (out.promoted) document.dispatchEvent(new CustomEvent("truckmap:refresh"));
   } catch (err) {
     (await gate).reset();
-    toast(err.message, true);
+    console.error(err.detail ?? err);
+    toast(err.message, { error: true });
   } finally {
     btn.disabled = false;
   }

@@ -45,22 +45,71 @@ const authHeaders = () => ({
 });
 
 /**
+ * An error with a message a person can act on.
+ *
+ * `detail` keeps the machine-readable original for the console. Rendering the
+ * raw text was the previous behaviour and it produced genuinely unhelpful UI:
+ * a dropped connection showed "Failed to fetch", and asking for a truck that
+ * does not exist showed "Cannot coerce the result to a single JSON object".
+ * Neither tells a reader what happened or whether to try again.
+ */
+class ApiError extends Error {
+  constructor(message, detail) {
+    super(message);
+    this.name = "ApiError";
+    this.detail = detail;
+  }
+}
+
+/**
  * PostgREST reports failures as JSON `{ message, details, hint, code }` with a
- * non-2xx status. Surface `message`, since that is what callers already render,
- * and fall back to the status when the body is not JSON — a gateway error, say,
- * which never reached PostgREST at all.
+ * non-2xx status. Translate the ones a visitor can actually encounter; fall back
+ * to something honest rather than something technical.
  */
 async function fail(res) {
-  let msg = `Request failed (${res.status})`;
+  let body = null;
+  try { body = await res.json(); } catch { /* not JSON — a gateway error */ }
+  const detail = body?.message ?? `HTTP ${res.status}`;
+
+  if (res.status === 404 || body?.code === "PGRST116") {
+    throw new ApiError("That truck isn't on the map any more.", detail);
+  }
+  if (res.status === 401 || res.status === 403) {
+    throw new ApiError("This map is temporarily unavailable. Please try again shortly.", detail);
+  }
+  if (res.status === 429) {
+    throw new ApiError("Too many requests just now — give it a minute.", detail);
+  }
+  if (res.status >= 500) {
+    throw new ApiError("The server is having trouble. Please try again shortly.", detail);
+  }
+  throw new ApiError("Something went wrong loading that.", detail);
+}
+
+/**
+ * Wrap fetch so a network failure reads as one.
+ *
+ * fetch rejects with a bare TypeError("Failed to fetch") when the device is
+ * offline, DNS fails, or the request is blocked — indistinguishable from a
+ * programming error to the caller and meaningless to a reader. navigator.onLine
+ * is only trustworthy when it says FALSE, so it is used to sharpen the message,
+ * never to decide whether to try.
+ */
+async function request(url, init) {
   try {
-    const body = await res.json();
-    if (body?.message) msg = body.message;
-  } catch { /* not JSON — keep the status */ }
-  throw new Error(msg);
+    return await fetch(url, init);
+  } catch (e) {
+    throw new ApiError(
+      navigator.onLine
+        ? "Couldn't reach the server. Check your connection and try again."
+        : "You're offline. The map will work again once you reconnect.",
+      e.message
+    );
+  }
 }
 
 async function get(path, { headers = {}, raw = false } = {}) {
-  const res = await fetch(`${REST}/${path}`, {
+  const res = await request(`${REST}/${path}`, {
     headers: { ...authHeaders(), ...headers },
   });
   if (!res.ok) return fail(res);
@@ -68,7 +117,7 @@ async function get(path, { headers = {}, raw = false } = {}) {
 }
 
 async function rpc(fn, params) {
-  const res = await fetch(`${REST}/rpc/${fn}`, {
+  const res = await request(`${REST}/rpc/${fn}`, {
     method: "POST",
     headers: { ...authHeaders(), "content-type": "application/json" },
     body: JSON.stringify(params ?? {}),
@@ -151,7 +200,7 @@ export async function reviews(truckId, { limit = 10, offset = 0 } = {}) {
     + `&${eq("truck_id", truckId)}`
     + `&order=created_at.desc&limit=${limit}&offset=${offset}`;
 
-  const res = await fetch(`${REST}/${q}`, {
+  const res = await request(`${REST}/${q}`, {
     headers: { ...authHeaders(), prefer: "count=exact" },
   });
 
@@ -191,13 +240,21 @@ export async function pendingEdits(truckId) {
  * applies per-IP caps.
  */
 async function post(path, body) {
-  const res = await fetch(path, {
+  const res = await request(path, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json?.error?.message ?? `Request failed (${res.status})`);
+  if (!res.ok) {
+    // handlers.mjs already writes these for a reader — "Daily limit reached. Try
+    // again tomorrow.", "That truck or stop no longer exists." Pass them through
+    // rather than replacing them with something vaguer.
+    throw new ApiError(
+      json?.error?.message ?? "Couldn't save that. Please try again.",
+      json?.error?.code ?? `HTTP ${res.status}`
+    );
+  }
   return json;
 }
 

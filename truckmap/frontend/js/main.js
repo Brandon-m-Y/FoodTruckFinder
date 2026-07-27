@@ -1,9 +1,10 @@
 import { openAddTruck } from "./addtruck.js";
 import { trucksAt } from "./api.js";
-import { BUCKET_LABEL, SOURCE_URL } from "./config.js";
+import { BUCKET_LABEL, SCRUB_HOURS, SOURCE_URL } from "./config.js";
 import { openTruck } from "./detail.js";
 import { focus, initMap, render } from "./map.js";
 import { fmtAsOf, fmtRange, hoursFromNow } from "./time.js";
+import { clearSticky, toast } from "./toast.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -13,19 +14,12 @@ const els = {
   btnNow: $("btn-now"),
   list: $("list"),
   count: $("list-count"),
-  status: $("status"),
 };
 
 let offset = 0;      // hours from now, driven by the scrubber
 let seq = 0;         // monotonic: a slow response must not overwrite a newer one
 let debounce = null;
 let lastRows = [];   // most recent result set, for popup -> detail lookup
-
-function setStatus(text) {
-  if (!text) return void (els.status.hidden = true);
-  els.status.textContent = text;
-  els.status.hidden = false;
-}
 
 function renderList(rows) {
   els.list.replaceChildren();
@@ -96,12 +90,14 @@ async function load() {
     lastRows = rows;
     render(rows);
     renderList(rows);
-    setStatus(null);
+    clearSticky(); // whatever was wrong has stopped being wrong
   } catch (err) {
     if (mine !== seq) return;
-    console.error(err);
-    setStatus(`Couldn't load trucks — ${err.message}`);
-    els.count.textContent = "Error";
+    console.error("trucksAt:", err.detail ?? err);
+    // Sticky: the trucks are still not loaded, so a 3.8s timer would be lying.
+    // api.js has already turned this into something a reader can act on.
+    toast(err.message, { error: true, sticky: true });
+    els.count.textContent = "Couldn't load";
   }
 }
 
@@ -136,6 +132,11 @@ function renderColophon() {
 function boot() {
   initMap();
   renderColophon();
+
+  // Drive the scrubber's range from the constant rather than the markup. The
+  // HTML carried a hardcoded max="336" alongside a SCRUB_HOURS that nothing
+  // imported — two copies of one number, free to drift, with nothing to catch it.
+  els.scrubber.max = String(SCRUB_HOURS);
   els.scrubber.addEventListener("input", onScrub);
   els.btnNow.addEventListener("click", () => {
     els.scrubber.value = "0";

@@ -38,8 +38,12 @@
         <output id="when-value" class="when-value">now</output>
         <button id="btn-now" class="btn-now" type="button">Now</button>
       </div>
+      <!-- max is set by main.js from SCRUB_HOURS, so the horizon lives in one
+           place. It was hardcoded here as well, next to a SCRUB_HOURS constant
+           nothing imported — two copies of one number with nothing to catch a
+           drift between them. -->
       <input id="scrubber" class="scrubber" type="range"
-             min="0" max="336" step="1" value="0"
+             min="0" step="1" value="0"
              aria-labelledby="when-label"
              aria-describedby="when-value" />
       <div class="scrubber-ticks" aria-hidden="true">

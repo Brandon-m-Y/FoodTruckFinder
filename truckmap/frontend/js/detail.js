@@ -2,6 +2,7 @@ import {
   pendingEdits, reviews, submitEdit, submitReview, submitSighting, truck,
 } from "./api.js";
 import { fmtRange } from "./time.js";
+import { toast } from "./toast.js";
 import { guard } from "./turnstile.js";
 
 const sheet = document.getElementById("sheet");
@@ -22,15 +23,6 @@ function stars(rating) {
   s.textContent = "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5 - n);
   s.setAttribute("aria-label", `${n} out of 5 stars`);
   return s;
-}
-
-function toast(msg, isError = false) {
-  const t = document.getElementById("status");
-  t.textContent = msg;
-  t.classList.toggle("err", isError);
-  t.hidden = false;
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => { t.hidden = true; }, 3800);
 }
 
 // --- sections ----------------------------------------------------------------
@@ -66,7 +58,8 @@ function sightingSection(row) {
         document.dispatchEvent(new CustomEvent("truckmap:refresh"));
       } catch (e) {
         (await g).reset();
-        toast(e.message, true);
+        console.error(e.detail ?? e);
+        toast(e.message, { error: true });
       } finally {
         bar.querySelectorAll("button").forEach((x) => (x.disabled = false));
       }
@@ -154,7 +147,8 @@ function reviewForm(truckId, onDone) {
       onDone();
     } catch (err) {
       (await g).reset();
-      toast(err.message, true);
+      console.error(err.detail ?? err);
+      toast(err.message, { error: true });
     } finally {
       submit.disabled = false;
     }
@@ -212,7 +206,8 @@ function editForm(truckId, currentDescription) {
       details.open = false;
     } catch (err) {
       (await g).reset();
-      toast(err.message, true);
+      console.error(err.detail ?? err);
+      toast(err.message, { error: true });
     } finally {
       submit.disabled = false;
     }
@@ -267,12 +262,19 @@ function reviewSection(truckId) {
   const heading = el("h3", null, "Reviews");
   const ul = el("ul", "reviews");
   const pager = el("div", "pager");
-  box.append(heading, ul, pager);
+  // A permanent slot for failures rather than appending one on each. The old
+  // code did `box.append(...)` in the catch, so every retry stacked another
+  // error paragraph under the last — three failed pager clicks left three
+  // identical messages on screen.
+  const errorBox = el("div", "load-error");
+  errorBox.hidden = true;
+  box.append(heading, ul, pager, errorBox);
 
   let page = 0;
 
   async function load() {
     ul.setAttribute("aria-busy", "true");
+    errorBox.hidden = true;
     let rows = [];
     let total = 0;
     try {
@@ -281,10 +283,21 @@ function reviewSection(truckId) {
         offset: page * PAGE_SIZE,
       }));
     } catch (e) {
+      // aria-busy was previously left set on this path, so a screen reader was
+      // told the list was still loading — forever, with no way to learn it had
+      // failed. Clear it before anything else.
+      ul.removeAttribute("aria-busy");
       ul.replaceChildren();
       pager.replaceChildren();
       heading.textContent = "Reviews";
-      box.append(el("p", "hint", `Couldn't load reviews: ${e.message}`));
+
+      console.error("reviews:", e.detail ?? e);
+      errorBox.replaceChildren(el("p", "hint", e.message));
+      const retry = el("button", "btn", "Try again");
+      retry.type = "button";
+      retry.addEventListener("click", load);
+      errorBox.append(retry);
+      errorBox.hidden = false;
       return;
     }
     ul.removeAttribute("aria-busy");
@@ -412,7 +425,11 @@ export async function openTruck(row) {
   try {
     await paint();
   } catch (e) {
-    body.replaceChildren(el("p", "hint", `Couldn't load: ${e.message}`));
+    console.error("openTruck:", e.detail ?? e);
+    const retry = el("button", "btn", "Try again");
+    retry.type = "button";
+    retry.addEventListener("click", () => openTruck(row));
+    body.replaceChildren(el("p", "hint", e.message), retry);
   }
 }
 

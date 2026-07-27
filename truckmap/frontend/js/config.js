@@ -50,10 +50,6 @@ export const BASEMAP = {
     + '&copy; <a href="https://carto.com/attributions">CARTO</a>',
 };
 
-// Mirrors public.confidence_bucket() in the database. Kept in sync by hand;
-// the server value is authoritative and is what we actually render.
-export const BUCKETS = ["live", "likely", "scheduled", "unlikely"];
-
 export const BUCKET_LABEL = {
   live: "Here now",
   likely: "Likely",
@@ -61,5 +57,6 @@ export const BUCKET_LABEL = {
   unlikely: "Unconfirmed",
 };
 
-// How far ahead the time scrubber can reach, in hours.
+// How far ahead the time scrubber can reach, in hours. main.js applies this to
+// the range input's max, so this is the only place the number lives.
 export const SCRUB_HOURS = 336; // 14 days — matches materialize_schedules(14)

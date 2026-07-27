@@ -443,6 +443,17 @@ details.sheet-sec summary { cursor: pointer; font-size: 0.88rem; font-weight: 60
 
 .pending-note { margin-top: 1rem; font-style: italic; }
 
+/* A single reusable slot for a failed load, with its own retry. Replaces the
+   old pattern of appending a fresh <p> per failure, which stacked. */
+.load-error {
+  margin-top: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-soft);
+}
+.load-error p { margin: 0 0 0.5rem; }
+
 .panel-foot { border-top: 1px solid var(--line); padding: 0.7rem 1rem; }
 .panel-foot .disclaimer { padding: 0.6rem 0 0; border: 0; }
 
