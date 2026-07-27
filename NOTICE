@@ -98,10 +98,18 @@ Map data:
   © OpenStreetMap contributors       Open Database License (ODbL) 1.0
   https://www.openstreetmap.org/copyright
 
-  Tiles are served from tile.openstreetmap.org under the OSMF Tile Usage Policy.
-  Attribution is rendered in the map control and must not be removed. A
-  production deployment at any real traffic level is expected to move to its own
-  tile source rather than lean on the community servers.
+  Basemap tiles                      CARTO (Positron / Dark Matter)
+  https://carto.com/attributions     built from OpenStreetMap data
+
+  Tiles come from CARTO's basemap CDN, not from tile.openstreetmap.org. The OSMF
+  tile servers are donation-funded and their usage policy asks production
+  applications not to use them; this project used them during development and
+  moved off before launch.
+
+  The underlying DATA is still OpenStreetMap, so the ODbL attribution obligation
+  travels with it regardless of who serves the images. Both credits are rendered
+  in the map's attribution control on every map, including the small location
+  picker in the add-truck form, and must not be removed.
 
 Public data:
 

@@ -236,11 +236,56 @@ body { display: flex; flex-direction: column; }
   display: grid;
   place-items: center;
   font-size: 0.8rem;
+  /* Anchors the .live pulse ring. Without it ::after resolves against Leaflet's
+     own absolutely-positioned marker wrapper and the halo lands off-centre. */
+  position: relative;
 }
 .pin.live { background: var(--live); }
 .pin.likely { background: var(--likely); }
 .pin.scheduled { background: var(--scheduled); }
 .pin.unlikely { background: var(--unlikely); color: var(--unlikely-fg); }
+
+/* --- marker entry / exit -----------------------------------------------------
+   map.js diffs the marker set instead of rebuilding it, so a pin now has an
+   identity that persists across scrubs and there is something to animate along.
+   Entry and exit are short on purpose: dragging the time slider can add and drop
+   several pins a second, and anything slower reads as lag rather than motion. */
+.pin-entering { animation: pin-in 0.18s ease-out; }
+.pin-leaving {
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.18s ease-in, transform 0.18s ease-in;
+}
+@keyframes pin-in {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* A slow halo on trucks confirmed to be out right now. It is the one state
+   worth drawing the eye to, and it pulses the RING rather than the pin so the
+   taco itself stays still and legible. */
+.pin.live::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--live);
+  animation: pin-pulse 2.4s ease-out infinite;
+}
+@keyframes pin-pulse {
+  0%   { opacity: 0.7; transform: scale(1); }
+  70%  { opacity: 0;   transform: scale(1.9); }
+  100% { opacity: 0;   transform: scale(1.9); }
+}
+
+/* A map that pulses indefinitely is genuinely unpleasant with a vestibular
+   disorder, and this one repeats forever by design. Honour the preference for
+   all three animations, not just the halo. */
+@media (prefers-reduced-motion: reduce) {
+  .pin.live::after { animation: none; opacity: 0.55; }
+  .pin-entering { animation: none; }
+  .pin-leaving { transition: none; }
+}
 
 /* Leaflet hardcodes a white popup, so it has to be themed explicitly or the
    cream/dark palette stops at the popup edge. */
@@ -424,6 +469,42 @@ details.sheet-sec summary { cursor: pointer; font-size: 0.88rem; font-weight: 60
   .topbar { padding: 0.8rem 1rem; gap: 0.7rem; }
   .brand-mark { font-size: 2rem; }
   .when { flex-basis: 100%; max-width: none; }
+
+  /* Detail sheet becomes a BOTTOM sheet.
+     A side drawer at this width is full-bleed, which reads as a page
+     navigation — the map disappears and it is unclear you can get back. Rising
+     from the bottom over a still-visible map keeps the context and matches what
+     every other map app on a phone does, so the dismiss gesture is already
+     known. Capped at 85vh so a strip of map always shows above it, which is
+     what signals "this is a layer, tap away to close". */
+  .sheet-panel {
+    top: auto;
+    left: 0; right: 0; bottom: 0;
+    width: auto;
+    max-height: 85vh;
+    border-radius: 14px 14px 0 0;
+    animation: sheet-up 0.2s ease-out;
+  }
+
+  /* The grab handle. Purely an affordance — dismissal is the scrim or the close
+     button — but it is the convention that tells people this panel is dismissable
+     at all. aria-hidden by virtue of being a pseudo-element. */
+  .sheet-panel::before {
+    content: "";
+    position: absolute;
+    top: 0.5rem; left: 50%;
+    transform: translateX(-50%);
+    width: 2.25rem; height: 0.25rem;
+    border-radius: 999px;
+    background: var(--line);
+  }
+  .sheet-body { padding-top: 1.4rem; }
+  .sheet-close { top: 0.7rem; }
+}
+
+@keyframes sheet-up { from { transform: translateY(1.5rem); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .sheet-panel { animation: none; }
 }
 
 /* Turnstile widget. appearance:"interaction-only" means it usually renders

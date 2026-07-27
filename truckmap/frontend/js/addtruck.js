@@ -1,5 +1,5 @@
 import { cuisines, submitTruck } from "./api.js";
-import { DEFAULT_VIEW } from "./config.js";
+import { BASEMAP, DEFAULT_VIEW } from "./config.js";
 import { guard } from "./turnstile.js";
 
 const sheet = document.getElementById("add-sheet");
@@ -41,9 +41,15 @@ function initPickMap() {
     center: DEFAULT_VIEW.center,
     zoom: 11,
     zoomControl: true,
-    attributionControl: false,
+    // Attribution was suppressed here to save space on a 13rem map. It is not
+    // ours to suppress: OSM's ODbL and CARTO's terms both require it wherever
+    // their tiles are shown, small map or not.
+    attributionControl: true,
   });
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(pickMap);
+  L.tileLayer(
+    window.matchMedia("(prefers-color-scheme: dark)").matches ? BASEMAP.dark : BASEMAP.light,
+    { maxZoom: BASEMAP.maxZoom, attribution: BASEMAP.attribution, detectRetina: true }
+  ).addTo(pickMap);
   pickMap.on("click", (e) => setPin(e.latlng.lat, e.latlng.lng));
 }
 

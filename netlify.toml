@@ -69,8 +69,12 @@
     #   style-src    'unsafe-inline' is unavoidable: Leaflet positions every tile
     #                and marker with element.style, which CSP treats as inline.
     #                It applies to styles only, never to script.
-    #   img-src      OSM raster tiles; data: for Leaflet's inline 1x1 GIFs;
+    #   img-src      CARTO basemap tiles; data: for Leaflet's inline 1x1 GIFs;
     #                unpkg for the marker sprites leaflet.css references.
+    #                tile.openstreetmap.org is deliberately NOT here any more —
+    #                both maps moved to CARTO, and leaving a dead origin in an
+    #                allowlist only makes it easier to drift back onto donation-
+    #                funded infrastructure without noticing.
     #   connect-src  the Supabase project (PostgREST reads), 'self' (/api/*
     #                writes), and Turnstile. That last one is NOT decoration:
     #                the widget calls home, and with only script-src and
@@ -90,7 +94,7 @@
     # What is NOT granted: 'unsafe-inline'. Google ships its init snippet inline;
     # ours lives in js/analytics.js so script-src keeps refusing injected markup.
     # That clause is the reason this header earns its place.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' https://unpkg.com https://challenges.cloudflare.com https://*.googletagmanager.com; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org https://unpkg.com https://*.google-analytics.com https://*.googletagmanager.com; connect-src 'self' https://detmkrivpmfljqfazdzx.supabase.co https://challenges.cloudflare.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; frame-src https://challenges.cloudflare.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://unpkg.com https://challenges.cloudflare.com https://*.googletagmanager.com; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' data: https://*.basemaps.cartocdn.com https://unpkg.com https://*.google-analytics.com https://*.googletagmanager.com; connect-src 'self' https://detmkrivpmfljqfazdzx.supabase.co https://challenges.cloudflare.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; frame-src https://challenges.cloudflare.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 
 # Static assets are fingerprint-free, so they must revalidate — a cached
 # config.js holding a rotated Supabase key would break the map until the

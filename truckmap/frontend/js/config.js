@@ -23,6 +23,33 @@ export const SOURCE_URL = "https://github.com/Brandon-m-Y/FoodTruckFinder";
 export const DEFAULT_VIEW = { center: [39.44, -84.55], zoom: 11 };
 export const MIN_ZOOM = 8;
 
+/**
+ * Basemap: CARTO Positron (light) / Dark Matter (dark).
+ *
+ * WHY NOT tile.openstreetmap.org
+ * The OSMF tile servers are donation-funded and their usage policy explicitly
+ * asks production applications not to use them. That is the reason for this
+ * change; the fact that Positron is a calmer basemap — grey roads, muted labels,
+ * so four coloured confidence pins are the only saturated thing on screen — is
+ * a bonus rather than the point.
+ *
+ * The DATA is still OpenStreetMap and its ODbL attribution requirement travels
+ * with it, which is why both entries below are non-negotiable and why the
+ * picker map in addtruck.js now shows an attribution control it previously
+ * suppressed.
+ *
+ * `{r}` expands to "@2x" on retina displays; Leaflet fills it in via
+ * `detectRetina`. `{s}` is the a/b/c/d subdomain rotation.
+ */
+export const BASEMAP = {
+  light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  maxZoom: 20,
+  attribution:
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors '
+    + '&copy; <a href="https://carto.com/attributions">CARTO</a>',
+};
+
 // Mirrors public.confidence_bucket() in the database. Kept in sync by hand;
 // the server value is authoritative and is what we actually render.
 export const BUCKETS = ["live", "likely", "scheduled", "unlikely"];
