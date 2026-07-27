@@ -130,9 +130,16 @@
             </p>
             <div class="btn-row">
               <button class="btn" id="af-locate" type="button">📍 Use my location</button>
-              <button class="btn" id="af-clear-pin" type="button" hidden>Clear pin</button>
+              <!-- Always rendered, disabled until there is a pin. Hiding it
+                   meant the control only appeared AFTER you had already placed
+                   one — so it could not teach you that placing one was possible,
+                   and it shifted the layout the moment you clicked. -->
+              <button class="btn" id="af-clear-pin" type="button" disabled>Clear pin</button>
             </div>
             <div id="af-map" class="pickmap"></div>
+            <p class="pin-status" id="af-pin-status" role="status" aria-live="polite">
+              No pin set — click the map to place one.
+            </p>
           </div>
 
           <label class="lbl" for="af-hours">How long will it be there?</label>

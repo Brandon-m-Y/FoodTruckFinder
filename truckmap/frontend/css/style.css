@@ -521,6 +521,29 @@ details.sheet-sec summary { cursor: pointer; font-size: 0.88rem; font-weight: 60
 }
 .pickmap .leaflet-container { background: var(--bg-soft); }
 
+/* Crosshair over the map surface — the clearest possible signal that clicking
+   here does something. Leaflet sets `grab` by default, which says "drag me" and
+   says nothing about placing a pin. Controls and the marker keep their own
+   cursors so they still read as draggable/clickable in their own right. */
+.pickmap .leaflet-container { cursor: crosshair; }
+.pickmap .leaflet-marker-icon { cursor: move; }
+.pickmap .leaflet-control a { cursor: pointer; }
+
+/* Pin state, always present so the form never reflows when a pin appears. */
+.pin-status {
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem;
+  color: var(--fg-soft);
+  min-height: 1.2em;
+}
+.pin-status.is-set { color: var(--accent); font-weight: 600; }
+
+/* .btn:disabled uses cursor:progress, which is right for the only case it had
+   until now — a button disabled for the duration of a submit, where "working on
+   it" is exactly the message. This button is disabled because there is nothing
+   to clear yet, which is a state, not a wait. */
+#af-clear-pin:disabled { cursor: not-allowed; }
+
 /* Confirms the chosen rating in words. The picker is pure CSS, so a mis-wired
    scale looks perfectly fine — this makes the recorded value visible. */
 .stars-readout {

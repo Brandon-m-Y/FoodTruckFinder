@@ -6,6 +6,7 @@ const sheet = document.getElementById("add-sheet");
 const form = document.getElementById("add-form");
 const chipBox = document.getElementById("af-cuisines");
 const clearBtn = document.getElementById("af-clear-pin");
+const pinStatus = document.getElementById("af-pin-status");
 let loaded = false;
 let lastFocus = null;
 
@@ -13,25 +14,43 @@ let lastFocus = null;
 let pickMap = null;
 let pin = null;
 
+/**
+ * Reflect pin state in the UI.
+ *
+ * The button is enabled/disabled rather than shown/hidden, and the status line
+ * is always present. Toggling `hidden` on either meant the pin controls only
+ * existed once a pin did — which is backwards, since their job is to tell you
+ * that placing one is an option in the first place — and it reflowed the form
+ * under the cursor at the exact moment of the click.
+ */
+function renderPinState() {
+  clearBtn.disabled = !pin;
+  pinStatus.textContent = pin
+    ? `Pin set at ${pin.lat.toFixed(4)}, ${pin.lon.toFixed(4)} — drag it to adjust.`
+    : "No pin set — click the map to place one.";
+  pinStatus.classList.toggle("is-set", Boolean(pin));
+}
+
 function setPin(lat, lon) {
   pin = { lat, lon };
-  clearBtn.hidden = false;
   if (!pickMarker) {
     pickMarker = L.marker([lat, lon], { draggable: true }).addTo(pickMap);
     pickMarker.on("dragend", () => {
       const p = pickMarker.getLatLng();
       pin = { lat: p.lat, lon: p.lng };
+      renderPinState(); // keep the readout honest after a drag, not just a click
     });
   } else {
     pickMarker.setLatLng([lat, lon]);
   }
+  renderPinState();
 }
 let pickMarker = null;
 
 function clearPin() {
   pin = null;
-  clearBtn.hidden = true;
   if (pickMarker) { pickMap.removeLayer(pickMarker); pickMarker = null; }
+  renderPinState();
 }
 
 /** Built lazily — a Leaflet map inside a hidden container renders at zero size. */
@@ -51,6 +70,21 @@ function initPickMap() {
     { maxZoom: BASEMAP.maxZoom, attribution: BASEMAP.attribution, detectRetina: true }
   ).addTo(pickMap);
   pickMap.on("click", (e) => setPin(e.latlng.lat, e.latlng.lng));
+
+  // Leaflet measures its container once, at construction. This one is built
+  // inside a panel that was `hidden` a moment ago and is mid slide-in
+  // animation, so that measurement can be zero — and a zero-sized map loads no
+  // tiles, leaving a blank rectangle until some interaction forces a redraw.
+  //
+  // A single rAF invalidateSize() usually wins that race. "Usually" is the
+  // problem: it depends on when layout flushes, which varies with the
+  // animation, the viewport, and whether the sheet is the mobile bottom sheet.
+  // Observing the element removes the race instead of betting on it — every
+  // size change re-measures, including orientation changes and the bottom sheet
+  // resizing as the on-screen keyboard opens.
+  new ResizeObserver(() => pickMap.invalidateSize()).observe(
+    document.getElementById("af-map")
+  );
 }
 
 document.getElementById("af-locate").addEventListener("click", () => {
