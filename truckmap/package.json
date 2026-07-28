@@ -12,7 +12,8 @@
     "smoke": "node scripts/smoke.mjs",
     "check-deploy": "node scripts/check-deploy.mjs",
     "purge-demo": "node scripts/purge-demo.mjs",
-    "moderate": "node scripts/moderate.mjs"
+    "moderate": "node scripts/moderate.mjs",
+    "import-licences": "node scripts/import-licences.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8"
