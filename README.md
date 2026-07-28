@@ -59,7 +59,48 @@ push never touches Docker.
 | `npm run db:push` | apply migrations to the linked project |
 | `npm run db:status` | migration ledger, local vs remote |
 | `npm run smoke` | assert the live confidence chain **and** the security posture |
+| `npm run check-deploy` | probe the *deployed* site — chiefly that a garbage Turnstile token is refused |
+| `npm run moderate` | takedowns, the review queue, and putting trucks on the map |
+| `npm run import-licences` | load a county health district export; dry-run by default |
 | `npm run purge-demo` | dry-run the removal of `[DEMO]` data; `-- --yes` to commit |
+
+Through npm, options need a `--` separator so npm passes them through rather than eating them:
+`npm run moderate add "Name" -- --at 39.3995,-84.5613`.
+
+---
+
+## Putting a truck on the map, and keeping it there
+
+The map renders **appearances**, not trucks, so a truck is visible only while it has one. There are
+three ways to get one, and only two of them last:
+
+| Route | Lifespan |
+|---|---|
+| Someone submits a truck with a pin | **one window, 1–12 hours**, then gone for good |
+| A crowd sighting | hours; decays with a 45-minute half-life |
+| A standing weekly rule (`schedules`) | **indefinite** — re-materialized nightly over a rolling 14 days |
+
+Only the third persists, and until migration 0018 nothing could create one, which is why the demo
+trucks were the only durable pins on the site. `moderate add` / `moderate place` create one:
+
+```bash
+npm run moderate add "Taqueria La Bamba" -- \
+  --at 39.3995,-84.5613 --place "Municipal Brew Works" \
+  --days thu,fri --from 17:00 --to 21:00 --type brewery --cuisines tacos,mexican
+
+npm run moderate place 30 -- --at 39.36,-84.31 --place "Union Centre"   # an existing truck
+npm run moderate curated                                                # what you've vouched for
+npm run moderate uncurate 30 "closed for the season"                    # retract, not a takedown
+```
+
+Both mark the truck **curated**: pinned `active`, exempt from the nightly sweep that demotes quiet
+trucks to `dormant`. That exemption is load-bearing rather than cosmetic — `dormant` is what stops
+the materializer, so without it a truck placed on Monday silently loses its pins by Tuesday.
+
+Curation is a maintenance flag, not a display one. Nothing in the UI renders it and there is no
+badge: a visitor cannot tell a curated truck from any other, which is the point — these are real
+businesses, not demo rows. `curate_truck()` is EXECUTE-granted to `service_role` alone, so this CLI
+is the only door to it.
 
 ---
 
@@ -175,9 +216,21 @@ open. If you add a `SECURITY DEFINER` function, add it to `RPC_PROBES`.
 | `…160000_submitter_is_a_witness` | a submitter saying "it's here" IS a sighting; record it |
 | `…170000_review_multiple_for_exempt` | let exempt IPs stack reviews, for testing lists |
 | `…0726_090000_revoke_execute_from_public` | **security**: actually revoke EXECUTE (see above) |
+| `…0726_180000_close_unmoderated_reads` | **security**: stop serving un-reviewed submissions and rejected edits |
+| `…0726_190000_moderation_log` | forward-fix: column revokes are no-ops under a table grant; append-only audit trail |
+| `…0726_200000_takedown_cascades_to_content` | **security**: hiding a truck now hides its reviews too |
+| `…0728_120000_licence_import` | provenance for county licence records; `import_truck()` |
+| `…0728_160000_curated_trucks` | `curated`; `curate_truck()`; the materializer stops skipping demoted trucks |
+| `…0728_163000_fix_materialize_regression` | forward-fix: 0018 rebuilt `materialize_schedules` from the wrong ancestor |
 
-Migrations are forward-only. `105000` exists because the bug it fixes was already applied; editing
-an applied migration would desync the remote ledger.
+Migrations are forward-only. `105000` and `163000` both exist because the bug they fix was already
+applied; editing an applied migration would desync the remote ledger.
+
+Those two are worth reading together — they are the **same bug, made twice**. Redefining a function
+with `create or replace` takes whatever body you hand it, so writing the new version against the
+function's *original* migration silently reverts every fix made since. `163000` lost the partial-index
+`ON CONFLICT` predicate from `105000` and the `p_days` clamp from `090000` that way. Before replacing
+a function, `grep` the migrations directory for its name and start from the newest definition.
 
 ### Scope
 

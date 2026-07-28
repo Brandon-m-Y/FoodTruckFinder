@@ -148,6 +148,13 @@ const RPC_PROBES = {
   recompute_truck_confidence: { p_truck_id: 1 },
   materialize_schedules: { p_days: 0 },
   nightly_maintenance: {},
+
+  // Curation (0018). The highest-privilege write in the system: curate_truck()
+  // creates a truck, marks it 'active', pins it against the demotion sweep and
+  // builds two weeks of appearances — an anonymous caller reaching it could put
+  // an arbitrary named business anywhere on the map, permanently.
+  curate_truck: { p_name: "smoke-probe", p_lat: null, p_lon: null },
+  uncurate_truck: { p_truck_id: 1, p_drop_schedules: false },
 };
 
 for (const [fn, args] of Object.entries(RPC_PROBES)) {
